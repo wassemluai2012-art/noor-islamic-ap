@@ -24,22 +24,27 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.11.1'
-
-      - name: Accept Android licenses
-        run: yes | sdkmanager --licenses || true
+      - name: Locate Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
+            exit 1
+          fi
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
 
       - name: Install Android SDK
         run: |
-          sdkmanager --install \
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" --install \
             "platforms;android-36" \
             "build-tools;36.0.0"
 
       - name: Build Noor
-        run: gradle :app:bundleRelease
+        run: |
+          gradle :app:bundleRelease
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
